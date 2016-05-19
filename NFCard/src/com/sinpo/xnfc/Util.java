@@ -115,7 +115,14 @@ public final class Util {
 	public static String toAmountString(float value) {
 		return String.format("%.2f", value);
 	}
-	
+	/**
+	 * 
+	 * @param tag
+	 * @param tlvList
+	 * @param offset
+	 * @param length
+	 * @return the offset of the value in buffer,not offset of the tag.
+	 */
 	public static short findValueOffByTag(short tag, byte[] tlvList,
 			short offset, short length) {
 		short i = offset;

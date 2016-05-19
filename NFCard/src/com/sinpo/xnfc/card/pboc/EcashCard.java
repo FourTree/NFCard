@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import android.content.res.Resources;
+import android.util.Log;
 
 import com.sinpo.xnfc.R;
 import com.sinpo.xnfc.Util;
@@ -86,7 +87,8 @@ final class EcashCard extends PbocCard {
 			}else{
 				return null;
 			}
-			
+			Log.i("ECASH", "【AID】:" + Util.toHexString(DFAID, 0, DFAID.length));
+
 			
 			Iso7816.Response INFO, CASH,ATC;
 
@@ -127,39 +129,70 @@ final class EcashCard extends PbocCard {
 					
 					logsfi = tbyte[toff];
 				}
-				
+				Log.i("ECASH", "【LOGSFI】:" + logsfi);
 				/*--------------------------------------------------------------*/
 				// read card info file, binary (21)
 				/*--------------------------------------------------------------*/
 				INFO = tag.readRecord(2,1);
+				Log.i("ECASH", "【INFO】:" + INFO.toString());
 
 				/*--------------------------------------------------------------*/
 				// read balance
 				/*--------------------------------------------------------------*/
 				CASH = tag.getPBOCBalance();
-				
+				Log.i("ECASH", "【BLANCE】:" + CASH.toString());
+
 				// read ATC
 				/*--------------------------------------------------------------*/
 				ATC = tag.getData(0x9F36);
-				
+				Log.i("ECASH", "【ATC】:" + ATC.toString());
+
 				// read 日志格式
 				/*--------------------------------------------------------------*/
 				byte[] logdol = tag.getData(0x9F4F).getBytes();
-			
+				Log.i("ECASH", "【LOGFOMAT】:"+Util.toHexString(logdol, 0, logdol.length));
+
 				
 				/*--------------------------------------------------------------*/
 				// read log file,
 				/*--------------------------------------------------------------*/
 				ArrayList<byte[]> LOG = readLog(tag, logsfi);
+				if((LOG == null) || (LOG.size() == 0)){
+					Log.i("ECASH", "【LOG】:ZERO");
+				}else{
+					Log.i("ECASH", "【LOG】:begin");
+					byte[] tlogbyte = null;
+					int lognum = LOG.size();
+					for(int i=0;i<lognum;i++){
+						tlogbyte = LOG.get(i);
+						if(tlogbyte != null){
+							Log.i("ECASH", "【LOG】:"+Util.toHexString(tlogbyte, 0,tlogbyte.length));
+						}else{
+							Log.i("ECASH", "【LOG】:err-"+i);
+							break;
+						}
+					}
+					Log.i("ECASH", "【LOG】:done");
+				}
+				
+
 
 				/*--------------------------------------------------------------*/
 				// build result string
 				/*--------------------------------------------------------------*/
 				final EcashCard ret = new EcashCard(tag, res);
 				ret.parseInfo(INFO);
+				Log.i("ECASH", "【parseInfo】:done");
+				
 				ret.parseBalance(CASH);
+				Log.i("ECASH", "【parseBalance】:done");
+
 				ret.parseLog(logdol,LOG);
+				Log.i("ECASH", "【parseLog】:done");
+
 				ret.parseData("ATC",ATC);
+				Log.i("ECASH", "【parseData】:done");
+
 
 				return ret;
 			}
@@ -181,9 +214,24 @@ final class EcashCard extends PbocCard {
 		}
 
 		final byte[] d = data.getBytes();
-		if((byte)0x70 == d[0]){
+		short toff = 0;
+		short slen = 0;
+		Log.i("ECASH", "【f_parseInfo_d】:"+Util.toHexString(d, 0,d.length));
+		if((byte)0x70 == (byte)d[0]){
+			if((byte)0x81 == (byte)d[1]){
+				slen = (short)((short)0x00FF & (short)d[2]);
+				toff = 3;
+			}else{
+				slen = (short)((short)0x00FF & (short)d[1]);
+				toff =2;
+			}
+			Log.i("ECASH", "【f_parseInfo_slen】:"+slen);
+			Log.i("ECASH", "【f_parseInfo_toff】:"+toff);
+
 			// PAN
-			short serloff = Util.findValueOffByTag((short) 0x5A, d,(short)2,(short)d.length);
+			short serloff = Util.findValueOffByTag((short) 0x5A, d,(short)toff,slen);
+			Log.i("ECASH", "【f_parseInfo_serloff】:"+serloff);
+
 			if(serloff > 0){
 				serl = Util.toHexString(d, serloff, d[serloff-1]);
 			}
